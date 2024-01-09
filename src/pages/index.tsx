@@ -1,4 +1,4 @@
-import { useRanges } from "@/state/range.state";
+import { useCreateRange, useRanges } from "@/state/range.state";
 import {
   Button,
   Card,
@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import { useCallback, useMemo, useState } from "react";
 import { Range, rangeSchema } from "@/schemas/range.schema";
@@ -24,6 +24,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ErrorMessage } from "@/components/ErrorMessage";
 
 export default function Home() {
+  // Triggers
+  const { createRangeTrigger } = useCreateRange();
+
   // State
   const { ranges } = useRanges();
 
@@ -36,28 +39,35 @@ export default function Home() {
   const {
     control: createRangeInputControl,
     handleSubmit: createRangeInputHandleSubmit,
-    reset: createRangeInputReset,
+    reset: resetCreateRangeInput,
     formState: { errors },
   } = useForm<CreateRangeInput>({
     resolver: zodResolver(createRangeInputSchema),
     defaultValues: {
       maximum: 0,
       minimum: 0,
-      status: true,
+      status: false,
       samplingRanges: [],
     },
   });
 
   // Event Handlers
-  const handleDetailsDialogClose = () => setIsDetailsDialogOpen(false);
-  const handleDetailsDialogOpen = () => setIsDetailsDialogOpen(true);
-  const handleCreateRangeDialogClose = () => setIsCreateRangeDialogOpen(false);
-  const handleCreateRangeDialogOpen = () => setIsCreateRangeDialogOpen(true);
+  const onDetailsDialogClose = () => setIsDetailsDialogOpen(false);
+  const onDetailsDialogOpen = () => setIsDetailsDialogOpen(true);
+  const onCreateRangeDialogClose = () => setIsCreateRangeDialogOpen(false);
+  const onCreateRangeDialogOpen = () => setIsCreateRangeDialogOpen(true);
+  const onCreateRangeInputSubmit: SubmitHandler<CreateRangeInput> = (input) =>
+    createRangeTrigger(input, {
+      onSuccess: () => {
+        resetCreateRangeInput();
+        onCreateRangeDialogClose();
+      },
+    });
 
   // Event Handler Builders
   const buildSamplingRangesButtonClickHandler = useCallback(
     (range?: Range) => () => {
-      handleDetailsDialogOpen();
+      onDetailsDialogOpen();
       setSelectedRange(range);
     },
     []
@@ -121,7 +131,7 @@ export default function Home() {
         {/* Toolbar */}
         <Card className="p-2">
           <Button
-            onClick={handleCreateRangeDialogOpen}
+            onClick={onCreateRangeDialogOpen}
             variant="outlined"
             startIcon={<AddCircleOutlineIcon />}
           >
@@ -135,7 +145,7 @@ export default function Home() {
 
       {/* Dialogs */}
       {/* Sampling Ranges Dialog */}
-      <Dialog open={isDetailsDialogOpen} onClose={handleDetailsDialogClose}>
+      <Dialog open={isDetailsDialogOpen} onClose={onDetailsDialogClose}>
         <DialogTitle>Rangos de Muestreo</DialogTitle>
         <DialogContent>
           <DataGrid
@@ -146,11 +156,8 @@ export default function Home() {
       </Dialog>
 
       {/* Create Range Dialog */}
-      <Dialog
-        open={isCreateRangeDialogOpen}
-        onClose={handleCreateRangeDialogClose}
-      >
-        <form>
+      <Dialog open={isCreateRangeDialogOpen} onClose={onCreateRangeDialogClose}>
+        <form onSubmit={createRangeInputHandleSubmit(onCreateRangeInputSubmit)}>
           <DialogTitle>Crear Rango</DialogTitle>
 
           <DialogContent className="flex gap-y-6 flex-col">
@@ -198,7 +205,7 @@ export default function Home() {
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={handleCreateRangeDialogClose}>Cancelar</Button>
+            <Button onClick={onCreateRangeDialogClose}>Cancelar</Button>
             <Button type="submit">Crear</Button>
           </DialogActions>
         </form>
